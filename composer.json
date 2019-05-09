@@ -1,5 +1,5 @@
 {
-    "name": "laravel/cashier",
+    "name": "angusm73/cashier",
     "description": "Laravel Cashier provides an expressive, fluent interface to Stripe's subscription billing services.",
     "keywords": ["laravel", "stripe", "billing"],
     "license": "MIT",
@@ -11,6 +11,10 @@
         {
             "name": "Taylor Otwell",
             "email": "taylorotwell@gmail.com"
+        },
+        {
+            "name": "Angus Moore",
+            "email": "hi@angus.digital"
         }
     ],
     "require": {

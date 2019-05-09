@@ -42,11 +42,11 @@ trait Billable
 
         $options['amount'] = $amount;
 
-        if (! array_key_exists('source', $options) && $this->stripe_id) {
+        if (!array_key_exists('source', $options) && $this->stripe_id) {
             $options['customer'] = $this->stripe_id;
         }
 
-        if (! array_key_exists('source', $options) && ! array_key_exists('customer', $options)) {
+        if (!array_key_exists('source', $options) && !array_key_exists('customer', $options)) {
             throw new InvalidArgumentException('No payment source provided.');
         }
 
@@ -75,7 +75,7 @@ trait Billable
      */
     public function hasCardOnFile()
     {
-        return (bool) $this->card_brand;
+        return (bool)$this->card_brand;
     }
 
     /**
@@ -89,8 +89,8 @@ trait Billable
      */
     public function tab($description, $amount, array $options = [])
     {
-        if (! $this->stripe_id) {
-            throw new InvalidArgumentException(class_basename($this).' is not a Stripe customer. See the createAsStripeCustomer method.');
+        if (!$this->stripe_id) {
+            throw new InvalidArgumentException(class_basename($this) . ' is not a Stripe customer. See the createAsStripeCustomer method.');
         }
 
         $options = array_merge([
@@ -151,7 +151,7 @@ trait Billable
         }
 
         return $subscription && $subscription->onTrial() &&
-               $subscription->stripe_plan === $plan;
+            $subscription->stripe_plan === $plan;
     }
 
     /**
@@ -183,8 +183,15 @@ trait Billable
             return $subscription->valid();
         }
 
-        return $subscription->valid() &&
-               $subscription->stripe_plan === $plan;
+        if ($subscription->valid() && $subscription->stripe_plan === $plan) {
+            return true;
+        }
+        $plan = $this->subscriptionItem($plan);
+        if (!is_null($plan) && $subscription->valid()) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -242,7 +249,8 @@ trait Billable
     {
         try {
             $stripeInvoice = StripeInvoice::upcoming(
-                ['customer' => $this->stripe_id], ['api_key' => $this->getStripeKey()]
+                ['customer' => $this->stripe_id],
+                ['api_key' => $this->getStripeKey()]
             );
 
             return new Invoice($this, $stripeInvoice);
@@ -261,12 +269,13 @@ trait Billable
     {
         try {
             $stripeInvoice = StripeInvoice::retrieve(
-                $id, $this->getStripeKey()
+                $id,
+                $this->getStripeKey()
             );
 
             $stripeInvoice->lines = StripeInvoice::retrieve($id, $this->getStripeKey())
-                        ->lines
-                        ->all(['limit' => 1000]);
+                ->lines
+                ->all(['limit' => 1000]);
 
             return new Invoice($this, $stripeInvoice);
         } catch (Exception $e) {
@@ -325,7 +334,7 @@ trait Billable
         // Here we will loop through the Stripe invoices and create our own custom Invoice
         // instances that have more helper methods and are generally more convenient to
         // work with than the plain Stripe objects are. Then, we'll return the array.
-        if (! is_null($stripeInvoices)) {
+        if (!is_null($stripeInvoices)) {
             foreach ($stripeInvoices->data as $invoice) {
                 if ($invoice->paid || $includePending) {
                     $invoices[] = new Invoice($this, $invoice);
@@ -363,7 +372,7 @@ trait Billable
             ['object' => 'card'] + $parameters
         );
 
-        if (! is_null($stripeCards)) {
+        if (!is_null($stripeCards)) {
             foreach ($stripeCards->data as $card) {
                 $cards[] = new Card($this, $card);
             }
@@ -379,7 +388,7 @@ trait Billable
      */
     public function defaultCard()
     {
-        if (! $this->hasStripeId()) {
+        if (!$this->hasStripeId()) {
             return;
         }
 
@@ -421,8 +430,8 @@ trait Billable
         // four digits and the card brand on the record in the database. This allows
         // us to display the information on the front-end when updating the cards.
         $source = $customer->default_source
-                    ? $customer->sources->retrieve($customer->default_source)
-                    : null;
+            ? $customer->sources->retrieve($customer->default_source)
+            : null;
 
         $this->fillCardDetails($source);
 
@@ -509,12 +518,15 @@ trait Billable
     {
         $subscription = $this->subscription($subscription);
 
-        if (! $subscription || ! $subscription->valid()) {
+        if (!$subscription || !$subscription->valid()) {
             return false;
         }
 
-        foreach ((array) $plans as $plan) {
+        foreach ((array)$plans as $plan) {
             if ($subscription->stripe_plan === $plan) {
+                return true;
+            }
+            if ($subscription->hasItem($plan)) {
                 return true;
             }
         }
@@ -530,9 +542,13 @@ trait Billable
      */
     public function onPlan($plan)
     {
-        return ! is_null($this->subscriptions->first(function ($value) use ($plan) {
-            return $value->stripe_plan === $plan && $value->valid();
-        }));
+        $subscription = $this->subscriptionByPlan($plan);
+
+        if (!is_null($subscription)) {
+            return $subscription->valid();
+        }
+
+        return false;
     }
 
     /**
@@ -542,7 +558,7 @@ trait Billable
      */
     public function hasStripeId()
     {
-        return ! is_null($this->stripe_id);
+        return !is_null($this->stripe_id);
     }
 
     /**
@@ -554,14 +570,15 @@ trait Billable
     public function createAsStripeCustomer(array $options = [])
     {
         $options = array_key_exists('email', $options)
-                ? $options
-                : array_merge($options, ['email' => $this->email]);
+            ? $options
+            : array_merge($options, ['email' => $this->email]);
 
         // Here we will create the customer instance on Stripe and store the ID of the
         // user from Stripe. This ID will correspond with the Stripe user instances
         // and allow us to retrieve users from Stripe later when we need to work.
         $customer = StripeCustomer::create(
-            $options, $this->getStripeKey()
+            $options,
+            $this->getStripeKey()
         );
 
         $this->stripe_id = $customer->id;
@@ -580,7 +597,9 @@ trait Billable
     public function updateStripeCustomer(array $options = [])
     {
         $customer = StripeCustomer::update(
-            $this->stripe_id, $options, $this->getStripeKey()
+            $this->stripe_id,
+            $options,
+            $this->getStripeKey()
         );
 
         return $customer;
@@ -643,5 +662,96 @@ trait Billable
     public static function setStripeKey($key)
     {
         static::$stripeKey = $key;
+    }
+
+    /**
+     * Begin creating a new multisubscription.
+     *
+     * @param  string  $subscription
+     * @param  string  $plan
+     * @return \Laravel\Cashier\SubscriptionBuilder
+     */
+    public function newMultisubscription()
+    {
+        return new MultisubscriptionBuilder($this);
+    }
+
+    /**
+     * Get all the subscription items for the user
+     */
+    public function subscriptionItems()
+    {
+        return $this->hasManyThrough(SubscriptionItem::class, Subscription::class)->orderBy('created_at', 'desc');
+    }
+
+    /**
+     * Gets a subscription item instance by name.
+     *
+     * @param  string  $plan
+     * @return \Laravel\Cashier\SubscriptionItem|null
+     */
+    public function subscriptionItem($plan)
+    {
+        $itemsTable = (new SubscriptionItem)->getTable();
+        return $this->subscriptionItems()->where($itemsTable . '.stripe_plan', $plan)->orderBy($itemsTable . '.created_at', 'desc')->first();
+    }
+
+    /**
+     * Adds a plan to the model's subscription
+     *
+     * @param  string   $plan          The plan's ID
+     * @param  integer  $quantity      The plan's quantity
+     * @param  string   $subscription  The subscription's name
+     * @return \Laravel\Cashier\Subscription
+     */
+    public function addPlan($plan, $prorate = true, $quantity = 1, $subscription = 'default')
+    {
+        $subscription = $this->subscription($subscription);
+
+        if (!is_null($subscription)) {
+            return $subscription->addItem($plan, $prorate, $quantity);
+        }
+
+        return $this->newMultisubscription($subscription)->addPlan($plan, $prorate, $quantity)->create();
+    }
+
+    /**
+     * Removes a plan from the model's subscription
+     *
+     * @param  string  $plan  The plan's ID
+     * @return \Laravel\Cashier\Subscription|null
+     */
+    public function removePlan($plan, $prorate = true, $subscription = 'default')
+    {
+        $subscription = $this->subscription($subscription);
+
+        if (is_null($subscription)) {
+            return null;
+        }
+
+        return $subscription->removeItem($plan, $prorate);
+    }
+
+    /**
+     * Gets the subscription that contains the given plan
+     *
+     * @param  string  $plan  The plan's ID
+     * @return \Laravel\Cashier\Subscription|null
+     */
+    public function subscriptionByPlan($plan)
+    {
+        $subscription = $this->subscriptions()->where('stripe_plan', $plan)->first();
+
+        if (!is_null($subscription)) {
+            return $subscription;
+        }
+
+        $item = $this->subscriptionItem($plan);
+
+        if (is_null($item)) {
+            return null;
+        }
+
+        return $item->subscription;
     }
 }
