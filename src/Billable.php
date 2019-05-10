@@ -712,7 +712,7 @@ trait Billable
             return $subscription->addItem($plan, $prorate, $quantity);
         }
 
-        return $this->newMultisubscription($subscription)->addPlan($plan, $prorate, $quantity)->create();
+        return $this->newMultisubscription($subscription)->addPlan($plan, $quantity)->create();
     }
 
     /**
