@@ -238,7 +238,7 @@ class Subscription extends Model
      * Increment the quantity of the subscription.
      *
      * @param  int  $count
-     * @return $this
+     * @return self
      */
     public function incrementQuantity($count = 1)
     {
@@ -251,7 +251,7 @@ class Subscription extends Model
      *  Increment the quantity of the subscription, and invoice immediately.
      *
      * @param  int  $count
-     * @return $this
+     * @return self
      */
     public function incrementAndInvoice($count = 1)
     {
@@ -266,7 +266,7 @@ class Subscription extends Model
      * Decrement the quantity of the subscription.
      *
      * @param  int  $count
-     * @return $this
+     * @return self
      */
     public function decrementQuantity($count = 1)
     {
@@ -279,7 +279,7 @@ class Subscription extends Model
      * Update the quantity of the subscription.
      *
      * @param  int  $quantity
-     * @return $this
+     * @return self
      */
     public function updateQuantity($quantity)
     {
@@ -301,7 +301,7 @@ class Subscription extends Model
     /**
      * Indicate that the plan change should not be prorated.
      *
-     * @return $this
+     * @return self
      */
     public function noProrate()
     {
@@ -314,7 +314,7 @@ class Subscription extends Model
      * Change the billing cycle anchor on a plan change.
      *
      * @param  \DateTimeInterface|int|string  $date
-     * @return $this
+     * @return self
      */
     public function anchorBillingCycleOn($date = 'now')
     {
@@ -332,7 +332,7 @@ class Subscription extends Model
      *
      * This method must be combined with swap, resume, etc.
      *
-     * @return $this
+     * @return self
      */
     public function skipTrial()
     {
@@ -345,7 +345,7 @@ class Subscription extends Model
      * Swap the subscription to a new Stripe plan.
      *
      * @param  string  $plan
-     * @return $this
+     * @return self
      */
     public function swap($plan)
     {
@@ -398,7 +398,7 @@ class Subscription extends Model
     /**
      * Cancel the subscription at the end of the billing period.
      *
-     * @return $this
+     * @return self
      */
     public function cancel()
     {
@@ -427,7 +427,7 @@ class Subscription extends Model
     /**
      * Cancel the subscription immediately.
      *
-     * @return $this
+     * @return self
      */
     public function cancelNow()
     {
@@ -453,7 +453,7 @@ class Subscription extends Model
     /**
      * Resume the cancelled subscription.
      *
-     * @return $this
+     * @return self
      * @throws \LogicException
      */
     public function resume()
@@ -537,7 +537,7 @@ class Subscription extends Model
      *
      * @param string $plan The added plan's ID
      * @param integer $quantity The quantity to be added
-     * @return $this
+     * @return self
      */
     public function addItem($plan, $prorate = true, $quantity = 1)
     {
@@ -565,7 +565,7 @@ class Subscription extends Model
      * Adds a plan from the subscription
      *
      * @param string $plan The removed plan's ID
-     * @return $this
+     * @return self
      */
     public function removeItem($plan, $prorate = true)
     {

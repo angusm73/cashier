@@ -441,7 +441,7 @@ trait Billable
     /**
      * Synchronises the customer's card from Stripe back into the database.
      *
-     * @return $this
+     * @return self
      */
     public function updateCardFromStripe()
     {
@@ -463,7 +463,7 @@ trait Billable
      * Fills the model's properties with the source from Stripe.
      *
      * @param  \Stripe\Card|\Stripe\BankAccount|null  $card
-     * @return $this
+     * @return self
      */
     protected function fillCardDetails($card)
     {

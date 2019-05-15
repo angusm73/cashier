@@ -97,7 +97,7 @@ class SubscriptionBuilder
      * Specify the quantity of the subscription.
      *
      * @param  int  $quantity
-     * @return $this
+     * @return self
      */
     public function quantity($quantity)
     {
@@ -110,7 +110,7 @@ class SubscriptionBuilder
      * Specify the number of days of the trial.
      *
      * @param  int  $trialDays
-     * @return $this
+     * @return self
      */
     public function trialDays($trialDays)
     {
@@ -123,7 +123,7 @@ class SubscriptionBuilder
      * Specify the ending date of the trial.
      *
      * @param  \Carbon\Carbon  $trialUntil
-     * @return $this
+     * @return self
      */
     public function trialUntil(Carbon $trialUntil)
     {
@@ -135,7 +135,7 @@ class SubscriptionBuilder
     /**
      * Force the trial to end immediately.
      *
-     * @return $this
+     * @return self
      */
     public function skipTrial()
     {
@@ -145,9 +145,9 @@ class SubscriptionBuilder
     }
 
     /**
-     * Force the trial to end immediately.
+     * Send invoices instead of charging immediately
      *
-     * @return $this
+     * @return self
      */
     public function sendInvoices()
     {
@@ -160,7 +160,7 @@ class SubscriptionBuilder
      * Change the billing cycle anchor on a plan creation.
      *
      * @param  \DateTimeInterface|int  $date
-     * @return $this
+     * @return self
      */
     public function anchorBillingCycleOn($date)
     {
@@ -177,7 +177,7 @@ class SubscriptionBuilder
      * The coupon to apply to a new subscription.
      *
      * @param  string  $coupon
-     * @return $this
+     * @return self
      */
     public function withCoupon($coupon)
     {
@@ -190,7 +190,7 @@ class SubscriptionBuilder
      * The metadata to apply to a new subscription.
      *
      * @param  array  $metadata
-     * @return $this
+     * @return self
      */
     public function withMetadata($metadata)
     {
