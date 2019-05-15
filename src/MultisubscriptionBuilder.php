@@ -89,6 +89,7 @@ class MultisubscriptionBuilder extends SubscriptionBuilder
             'items' => $this->buildPayloadItems(),
             'coupon' => $this->coupon,
             'billing' => $this->billing_type,
+            'days_until_due' => $this->days_until_due,
             'trial_end' => $this->getTrialEndForPayload(),
             'tax_percent' => $this->getTaxPercentageForPayload(),
             'metadata' => $this->metadata,

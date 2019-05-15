@@ -67,9 +67,18 @@ class SubscriptionBuilder
     /**
      * The billing type to be used for the subscription.
      *
-     * @var string|null
+     * @var string
      */
     protected $billing_type = 'charge_automatically';
+
+    /**
+     * Number of days before an invoice is due.
+     *
+     * Only applicable to billing = send_invoice.
+     *
+     * @var int|null
+     */
+    protected $days_until_due;
 
     /**
      * The metadata to apply to the subscription.
@@ -147,10 +156,12 @@ class SubscriptionBuilder
     /**
      * Send invoices instead of charging immediately
      *
+     * @param  int  $days_until_due
      * @return self
      */
-    public function sendInvoices()
+    public function sendInvoices(int $days_until_due = 7)
     {
+        $this->days_until_due = $days_until_due;
         $this->billing_type = 'send_invoice';
 
         return $this;
@@ -277,6 +288,7 @@ class SubscriptionBuilder
         return array_filter([
             'billing_cycle_anchor' => $this->billingCycleAnchor,
             'billing' => $this->billing_type,
+            'days_until_due' => $this->days_until_due,
             'coupon' => $this->coupon,
             'metadata' => $this->metadata,
             'plan' => $this->plan,
