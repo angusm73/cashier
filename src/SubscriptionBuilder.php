@@ -65,6 +65,13 @@ class SubscriptionBuilder
     protected $coupon;
 
     /**
+     * The billing type to be used for the subscription.
+     *
+     * @var string|null
+     */
+    protected $billing_type = 'charge_automatically';
+
+    /**
      * The metadata to apply to the subscription.
      *
      * @var array|null
@@ -133,6 +140,18 @@ class SubscriptionBuilder
     public function skipTrial()
     {
         $this->skipTrial = true;
+
+        return $this;
+    }
+
+    /**
+     * Force the trial to end immediately.
+     *
+     * @return $this
+     */
+    public function sendInvoices()
+    {
+        $this->billing_type = 'send_invoice';
 
         return $this;
     }
@@ -257,6 +276,7 @@ class SubscriptionBuilder
     {
         return array_filter([
             'billing_cycle_anchor' => $this->billingCycleAnchor,
+            'billing' => $this->billing_type,
             'coupon' => $this->coupon,
             'metadata' => $this->metadata,
             'plan' => $this->plan,

@@ -88,6 +88,7 @@ class MultisubscriptionBuilder extends SubscriptionBuilder
         return array_filter([
             'items' => $this->buildPayloadItems(),
             'coupon' => $this->coupon,
+            'billing' => $this->billing_type,
             'trial_end' => $this->getTrialEndForPayload(),
             'tax_percent' => $this->getTaxPercentageForPayload(),
             'metadata' => $this->metadata,
