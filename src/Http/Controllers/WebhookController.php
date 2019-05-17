@@ -160,7 +160,6 @@ class WebhookController extends Controller
 
             $user->forceFill([
                 'stripe_id' => null,
-                'trial_ends_at' => null,
                 'card_brand' => null,
                 'card_last_four' => null,
             ])->save();
