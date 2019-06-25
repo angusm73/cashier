@@ -103,6 +103,26 @@ class Invoice
     }
 
     /**
+     * Determine if the account had a balance from credit notes.
+     *
+     * @return bool
+     */
+    public function hasCreditBalance()
+    {
+        return $this->rawCreditBalance() > 0;
+    }
+
+    /**
+     * Get the balance from credit notes for the invoice.
+     *
+     * @return string
+     */
+    public function creditBalance()
+    {
+        return $this->formatAmount($this->rawCreditBalance());
+    }
+
+    /**
      * Determine if the invoice has a discount.
      *
      * @return bool
@@ -291,11 +311,11 @@ class Invoice
     }
 
     /**
-     * Get the balance applied using credit notes for the invoice.
+     * Get the raw balance applied using credit notes for the invoice.
      *
      * @return float
      */
-    public function creditBalance()
+    public function rawCreditBalance()
     {
         return (isset($this->invoice->pre_payment_credit_notes_amount) ? $this->pre_payment_credit_notes_amount : 0);
             + (isset($this->invoice->post_payment_credit_notes_amount) ? $this->post_payment_credit_notes_amount : 0);
