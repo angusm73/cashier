@@ -291,6 +291,17 @@ class Invoice
     }
 
     /**
+     * Get the balance applied using credit notes for the invoice.
+     *
+     * @return float
+     */
+    public function creditBalance()
+    {
+        return (isset($this->invoice->pre_payment_credit_notes_amount) ? $this->pre_payment_credit_notes_amount : 0);
+            + (isset($this->invoice->post_payment_credit_notes_amount) ? $this->post_payment_credit_notes_amount : 0);
+    }
+
+    /**
      * Get the Stripe invoice instance.
      *
      * @return \Stripe\Invoice
