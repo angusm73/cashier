@@ -131,7 +131,7 @@ class Invoice
     {
         return $this->invoice->subtotal > 0 &&
             $this->invoice->subtotal != $this->invoice->total &&
-            ! is_null($this->invoice->discount);
+            !is_null($this->invoice->discount);
     }
 
     /**
@@ -269,7 +269,7 @@ class Invoice
      */
     public function pdf(array $data)
     {
-        if (! defined('DOMPDF_ENABLE_AUTOLOAD')) {
+        if (!defined('DOMPDF_ENABLE_AUTOLOAD')) {
             define('DOMPDF_ENABLE_AUTOLOAD', false);
         }
 
@@ -288,11 +288,11 @@ class Invoice
      */
     public function download(array $data)
     {
-        $filename = $data['product'].'_'.$this->date()->month.'_'.$this->date()->year.'.pdf';
+        $filename = $data['product'] . '_' . $this->date()->month . '_' . $this->date()->year . '.pdf';
 
         return new Response($this->pdf($data), 200, [
             'Content-Description' => 'File Transfer',
-            'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+            'Content-Disposition' => 'attachment; filename="' . $filename . '"',
             'Content-Transfer-Encoding' => 'binary',
             'Content-Type' => 'application/pdf',
         ]);
@@ -317,7 +317,7 @@ class Invoice
      */
     public function rawCreditBalance()
     {
-        return (isset($this->invoice->pre_payment_credit_notes_amount) ? $this->invoice->pre_payment_credit_notes_amount : 0);
+        return (isset($this->invoice->pre_payment_credit_notes_amount) ? $this->invoice->pre_payment_credit_notes_amount : 0)
             + (isset($this->invoice->post_payment_credit_notes_amount) ? $this->invoice->post_payment_credit_notes_amount : 0);
     }
 
