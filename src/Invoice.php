@@ -317,8 +317,8 @@ class Invoice
      */
     public function rawCreditBalance()
     {
-        return (isset($this->invoice->pre_payment_credit_notes_amount) ? $this->pre_payment_credit_notes_amount : 0);
-            + (isset($this->invoice->post_payment_credit_notes_amount) ? $this->post_payment_credit_notes_amount : 0);
+        return (isset($this->invoice->pre_payment_credit_notes_amount) ? $this->invoice->pre_payment_credit_notes_amount : 0);
+            + (isset($this->invoice->post_payment_credit_notes_amount) ? $this->invoice->post_payment_credit_notes_amount : 0);
     }
 
     /**
