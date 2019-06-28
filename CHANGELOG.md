@@ -1,6 +1,22 @@
 # Release Notes
 
-## [Unreleased](https://github.com/laravel/cashier/compare/v9.3.1...9.0)
+## [Unreleased](https://github.com/laravel/cashier/compare/v9.3.3...master)
+
+### Added
+- Allow Carbon 2 ([#607](https://github.com/laravel/cashier/pull/607))
+
+
+## [v9.3.3 (2019-06-14)](https://github.com/laravel/cashier/compare/v9.3.2...v9.3.3)
+
+### Fixed
+- Fix hasStartingBalance and subtotal on `Invoice` ([#684](https://github.com/laravel/cashier/pull/684))
+
+
+## [v9.3.2 (2019-06-04)](https://github.com/laravel/cashier/compare/v9.3.1...v9.3.2)
+
+### Changed
+- `VerifyWebhookSignature` is no longer `final` ([260de04](https://github.com/laravel/cashier/commit/260de0458fc76708f90eb955ddddef0ee6d68798))
+- Remove strict type check for `trialUntil()` ([#678](https://github.com/laravel/cashier/pull/678))
 
 
 ## [v9.3.1 (2019-05-07)](https://github.com/laravel/cashier/compare/v9.3.0...v9.3.1)

@@ -63,11 +63,11 @@ class Invoice
     /**
      * Get the raw total amount that was paid (or will be paid).
      *
-     * @return float
+     * @return int
      */
     public function rawTotal()
     {
-        return max(0, $this->invoice->total - ($this->rawStartingBalance() * -1));
+        return $this->invoice->total + $this->rawStartingBalance();
     }
 
     /**
@@ -77,9 +77,7 @@ class Invoice
      */
     public function subtotal()
     {
-        return $this->formatAmount(
-            max(0, $this->invoice->subtotal - $this->rawStartingBalance())
-        );
+        return $this->formatAmount($this->invoice->subtotal);
     }
 
     /**
@@ -89,7 +87,7 @@ class Invoice
      */
     public function hasStartingBalance()
     {
-        return $this->rawStartingBalance() > 0;
+        return $this->rawStartingBalance() < 0;
     }
 
     /**
@@ -195,6 +193,16 @@ class Invoice
     }
 
     /**
+     * Get the tax total amount.
+     *
+     * @return string
+     */
+    public function tax()
+    {
+        return $this->formatAmount($this->invoice->tax);
+    }
+
+    /**
      * Get all of the "invoice item" line items.
      *
      * @return array
@@ -236,14 +244,14 @@ class Invoice
     }
 
     /**
-     * Format the given amount into a string based on the Stripe model's preferences.
+     * Format the given amount into a displayable currency.
      *
      * @param  int  $amount
      * @return string
      */
     protected function formatAmount($amount)
     {
-        return Cashier::formatAmount($amount);
+        return Cashier::formatAmount($amount, $this->invoice->currency);
     }
 
     /**

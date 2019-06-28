@@ -4,7 +4,6 @@ namespace Laravel\Cashier\Http\Controllers;
 
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
-use Laravel\Cashier\Cashier;
 use Illuminate\Support\Carbon;
 use Laravel\Cashier\Subscription;
 use Illuminate\Routing\Controller;
@@ -14,13 +13,13 @@ use Laravel\Cashier\Http\Middleware\VerifyWebhookSignature;
 class WebhookController extends Controller
 {
     /**
-     * Create a new webhook controller instance.
+     * Create a new WebhookController instance.
      *
      * @return void
      */
     public function __construct()
     {
-        if (config('services.stripe.webhook.secret')) {
+        if (config('cashier.webhook.secret')) {
             $this->middleware(VerifyWebhookSignature::class);
         }
     }
@@ -51,9 +50,7 @@ class WebhookController extends Controller
      */
     protected function handleCustomerSubscriptionUpdated(array $payload)
     {
-        $user = $this->getUserByStripeId($payload['data']['object']['customer']);
-
-        if ($user) {
+        if ($user = $this->getUserByStripeId($payload['data']['object']['customer'])) {
             $data = $payload['data']['object'];
 
             $user->subscriptions->filter(function (Subscription $subscription) use ($data) {
@@ -79,10 +76,14 @@ class WebhookController extends Controller
                 }
 
                 // Cancellation date...
-                if (isset($data['cancel_at_period_end']) && $data['cancel_at_period_end']) {
-                    $subscription->ends_at = $subscription->onTrial()
-                                ? $subscription->trial_ends_at
-                                : Carbon::createFromTimestamp($data['current_period_end']);
+                if (isset($data['cancel_at_period_end'])) {
+                    if ($data['cancel_at_period_end']) {
+                        $subscription->ends_at = $subscription->onTrial()
+                            ? $subscription->trial_ends_at
+                            : Carbon::createFromTimestamp($data['current_period_end']);
+                    } else {
+                        $subscription->ends_at = null;
+                    }
                 }
 
                 $subscription->save();
@@ -100,9 +101,7 @@ class WebhookController extends Controller
      */
     protected function handleCustomerSubscriptionDeleted(array $payload)
     {
-        $user = $this->getUserByStripeId($payload['data']['object']['customer']);
-
-        if ($user) {
+        if ($user = $this->getUserByStripeId($payload['data']['object']['customer'])) {
             $user->subscriptions->filter(function ($subscription) use ($payload) {
                 return $subscription->stripe_id === $payload['data']['object']['id'];
             })->each(function ($subscription) {
@@ -151,9 +150,7 @@ class WebhookController extends Controller
      */
     protected function handleCustomerDeleted(array $payload)
     {
-        $user = $this->getUserByStripeId($payload['data']['object']['id']);
-
-        if ($user) {
+        if ($user = $this->getUserByStripeId($payload['data']['object']['id'])) {
             $user->subscriptions->each(function (Subscription $subscription) {
                 $subscription->skipTrial()->markAsCancelled();
             });
@@ -176,7 +173,7 @@ class WebhookController extends Controller
      */
     protected function getUserByStripeId($stripeId)
     {
-        $model = Cashier::stripeModel();
+        $model = config('cashier.model');
 
         return (new $model)->where('stripe_id', $stripeId)->first();
     }

@@ -39,7 +39,7 @@ class SubscriptionBuilder
     /**
      * The date and time the trial will expire.
      *
-     * @var \Carbon\Carbon
+     * @var \Carbon\Carbon|\Carbon\CarbonInterface
      */
     protected $trialExpires;
 
@@ -131,10 +131,10 @@ class SubscriptionBuilder
     /**
      * Specify the ending date of the trial.
      *
-     * @param  \Carbon\Carbon  $trialUntil
+     * @param  \Carbon\Carbon|\Carbon\CarbonInterface  $trialUntil
      * @return self
      */
-    public function trialUntil(Carbon $trialUntil)
+    public function trialUntil($trialUntil)
     {
         $this->trialExpires = $trialUntil;
 
@@ -265,11 +265,7 @@ class SubscriptionBuilder
      */
     protected function getStripeCustomer($token = null, array $options = [])
     {
-        if ($this->owner->stripe_id) {
-            $customer = $this->owner->asStripeCustomer();
-        } else {
-            $customer = $this->owner->createAsStripeCustomer($options);
-        }
+        $customer = $this->owner->createOrGetStripeCustomer($options);
 
         if ($token) {
             $this->owner->updateCard($token);

@@ -58,9 +58,9 @@ class Subscription extends Model
      */
     public function owner()
     {
-        $class = Cashier::stripeModel();
+        $model = config('cashier.model');
 
-        return $this->belongsTo($class, (new $class)->getForeignKey());
+        return $this->belongsTo($model, (new $model)->getForeignKey());
     }
 
     /**
@@ -345,9 +345,10 @@ class Subscription extends Model
      * Swap the subscription to a new Stripe plan.
      *
      * @param  string  $plan
+     * @param  array  $options
      * @return self
      */
-    public function swap($plan)
+    public function swap($plan, $options = [])
     {
         $subscription = $this->asStripeSubscription();
 
@@ -359,6 +360,10 @@ class Subscription extends Model
 
         if (!is_null($this->billingCycleAnchor)) {
             $subscription->billing_cycle_anchor = $this->billingCycleAnchor;
+        }
+
+        foreach ($options as $key => $option) {
+            $subscription->$key = $option;
         }
 
         // If no specific trial end date has been set, the default behavior should be
