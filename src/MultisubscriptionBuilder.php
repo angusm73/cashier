@@ -7,6 +7,13 @@ use Carbon\Carbon;
 class MultisubscriptionBuilder extends SubscriptionBuilder
 {
     /**
+     * Stripe invoice collection method.
+     *
+     * @var string
+     */
+    protected $collection_method = 'send_invoice';
+
+    /**
      * The plans being subscribed to.
      *
      * @var array
@@ -40,6 +47,18 @@ class MultisubscriptionBuilder extends SubscriptionBuilder
     }
 
     /**
+     * Attempt payment for an invoice automattically
+     *
+     * Where an invoice is set to be charged automatically, a charge is attempted about an hour after the invoice’s creation.
+     *
+     * @return void
+     */
+    public function chargeAutomatically()
+    {
+        $this->collection_method = 'charge_automatically';
+    }
+
+    /**
      * Creates a new Stripe subscription with multiple plans.
      *
      * @param  string|null  $token
@@ -64,6 +83,7 @@ class MultisubscriptionBuilder extends SubscriptionBuilder
             'quantity' => 0,
             'trial_ends_at' => $trialEndsAt,
             'ends_at' => null,
+            'collection_method' => $this->collection_method,
         ]);
 
         // registers the subscription's items
