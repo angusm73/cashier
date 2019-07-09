@@ -88,13 +88,6 @@ class SubscriptionBuilder
     protected $metadata;
 
     /**
-     * The default tax rates for this subscription.
-     *
-     * @var array
-     */
-    protected $tax_rates = [];
-
-    /**
      * Create a new subscription builder instance.
      *
      * @param  mixed  $owner
@@ -302,7 +295,6 @@ class SubscriptionBuilder
     protected function buildPayload()
     {
         return array_filter([
-            'default_tax_rates' => $this->tax_rates,
             'billing_cycle_anchor' => $this->billingCycleAnchor,
             'billing' => $this->billing_type,
             'days_until_due' => $this->days_until_due,
