@@ -86,6 +86,7 @@ class MultisubscriptionBuilder extends SubscriptionBuilder
     protected function buildPayload()
     {
         return array_filter([
+            'default_tax_rates' => $this->tax_rates,
             'items' => $this->buildPayloadItems(),
             'coupon' => $this->coupon,
             'billing' => $this->billing_type,

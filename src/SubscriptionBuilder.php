@@ -267,7 +267,6 @@ class SubscriptionBuilder
         }
 
         return $this->owner->subscriptions()->create([
-            'default_tax_rates' => $this->tax_rates,
             'name' => $this->name,
             'stripe_id' => $subscription->id,
             'stripe_plan' => $this->plan,
@@ -303,6 +302,7 @@ class SubscriptionBuilder
     protected function buildPayload()
     {
         return array_filter([
+            'default_tax_rates' => $this->tax_rates,
             'billing_cycle_anchor' => $this->billingCycleAnchor,
             'billing' => $this->billing_type,
             'days_until_due' => $this->days_until_due,
