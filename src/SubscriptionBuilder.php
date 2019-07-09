@@ -88,6 +88,13 @@ class SubscriptionBuilder
     protected $metadata;
 
     /**
+     * The default tax rates for this subscription.
+     *
+     * @var array
+     */
+    protected $tax_rates = [];
+
+    /**
      * Create a new subscription builder instance.
      *
      * @param  mixed  $owner
@@ -211,6 +218,19 @@ class SubscriptionBuilder
     }
 
     /**
+     * The tax ID to apply to this subscription.
+     *
+     * @param  string  $tax_id
+     * @return self
+     */
+    public function withTaxRate($tax)
+    {
+        $this->tax_rates[] = $tax;
+
+        return $this;
+    }
+
+    /**
      * Add a new Stripe subscription to the Stripe model.
      *
      * @param  array  $options
@@ -247,6 +267,7 @@ class SubscriptionBuilder
         }
 
         return $this->owner->subscriptions()->create([
+            'default_tax_rates' => $this->tax_rates,
             'name' => $this->name,
             'stripe_id' => $subscription->id,
             'stripe_plan' => $this->plan,
