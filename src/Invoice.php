@@ -372,11 +372,15 @@ class Invoice
     /**
      * Get the payment intents for this Invoice
      *
-     * @return \Stripe\Collection
+     * @return \Illuminate\Support\Collection
      */
     public function paymentIntents()
     {
-        return \Stripe\PaymentIntent::all(['customer' => $this->owner->stripe_id], Cashier::stripeOptions());
+        $payments = \Stripe\PaymentIntent::all(['customer' => $this->owner->stripe_id], Cashier::stripeOptions());
+        $invoice = $this->invoice;
+        return collect($payments->data)->filter(function ($pi) use ($invoice) {
+            return $pi->invoice === $invoice->id;
+        });
     }
 
     /**
