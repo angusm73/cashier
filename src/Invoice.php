@@ -51,6 +51,43 @@ class Invoice
     }
 
     /**
+     * Get a Carbon date for the invoice due date.
+     *
+     * @param  \DateTimeZone|string  $timezone
+     * @return \Carbon\Carbon
+     */
+    public function dueDate($timezone = null)
+    {
+        $carbon = Carbon::createFromTimestampUTC($this->invoice->due_date);
+
+        return $timezone ? $carbon->setTimezone($timezone) : $carbon;
+    }
+
+    /**
+     * Get a Carbon date for the invoice next attempt date.
+     *
+     * @param  \DateTimeZone|string  $timezone
+     * @return \Carbon\Carbon
+     */
+    public function nextAttemptDate($timezone = null)
+    {
+        $carbon = Carbon::createFromTimestampUTC($this->invoice->next_payment_attempt);
+
+        return $timezone ? $carbon->setTimezone($timezone) : $carbon;
+    }
+
+    /**
+     * Check invoice is unpaid and past due date.
+     *
+     * @param  \DateTimeZone|string  $timezone
+     * @return boolean
+     */
+    public function pastDue($timezone = null)
+    {
+        return $this->dueDate($timezone)->isPast();
+    }
+
+    /**
      * Get the total amount that was paid (or will be paid).
      *
      * @return string
