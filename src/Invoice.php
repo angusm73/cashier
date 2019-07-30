@@ -370,6 +370,49 @@ class Invoice
     }
 
     /**
+     * Get event history for this Invoice
+     *
+     * @return \Illuminate\Support\Collection
+     */
+    public function history()
+    {
+        $event_history = collect();
+
+        $payments = $this->paymentIntents();
+        foreach ($payments as $pi) {
+            $charges = $pi->charges->all();
+            if (count($charges->data)) {
+                foreach ($charges as $ch) {
+                    if ($ch->status == 'failed') {
+                        $ch->color = "danger";
+                    }
+                    $event_history->push($ch);
+                }
+            } else {
+                if ($pi->status == 'requires_payment_method') {
+                    $pi->color = "danger";
+                }
+                $event_history->push($pi);
+            }
+        }
+
+        foreach (collect($this->invoice->status_transitions)->reverse() as $status => $time) {
+            if (!is_null($time)) {
+                $status = $status === 'finalized_at' && $this->invoice->paid ? 'created_at' : $status;
+                $color = $status === 'paid_at' && $this->invoice->paid ? 'success' : ($status == 'voided_at' || $status == 'marked_uncollectible_at' ? 'warning' : 'secondary');
+                $event_history->push([
+                    'created' => $time,
+                    'description' => "Invoice was " . str_replace('_', ' ', rtrim($status, "_at")),
+                    'object' => "status_transition",
+                    'color' => $color,
+                ]);
+            }
+        }
+
+        return $event_history->sortByDesc('created');
+    }
+
+    /**
      * Get the payment intents for this Invoice
      *
      * @return \Illuminate\Support\Collection
