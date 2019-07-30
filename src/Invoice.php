@@ -84,8 +84,10 @@ class Invoice
      */
     public function pastDue($timezone = null)
     {
-        return (!$this->invoice->paid && $this->invoice->attempted && $this->invoice->attempt_count > 0)
-            || $this->dueDate($timezone)->isPast();
+        return !$this->invoice->paid
+            && (
+                ($this->invoice->attempted && $this->invoice->attempt_count > 0)
+                || $this->dueDate($timezone)->isPast());
     }
 
     /**
