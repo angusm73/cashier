@@ -370,6 +370,16 @@ class Invoice
     }
 
     /**
+     * Get the payment intents for this Invoice
+     *
+     * @return \Stripe\Collection
+     */
+    public function paymentIntents()
+    {
+        return \Stripe\PaymentIntent::all(['customer' => $this->owner->stripe_id], Cashier::stripeOptions());
+    }
+
+    /**
      * Get the Stripe invoice instance.
      *
      * @return \Stripe\Invoice
