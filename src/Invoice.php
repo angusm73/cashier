@@ -58,6 +58,10 @@ class Invoice
      */
     public function dueDate($timezone = null)
     {
+        if (is_null($this->invoice->due_date)) {
+            return null;
+        }
+
         $carbon = Carbon::createFromTimestampUTC($this->invoice->due_date);
 
         return $timezone ? $carbon->setTimezone($timezone) : $carbon;
@@ -84,6 +88,10 @@ class Invoice
      */
     public function pastDue($timezone = null)
     {
+        if (is_null($this->invoice->due_date)) {
+            return false;
+        }
+
         return !$this->invoice->paid
             && (
                 ($this->invoice->attempted && $this->invoice->attempt_count > 0)
