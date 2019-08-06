@@ -19,11 +19,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Cashier Path
+    |--------------------------------------------------------------------------
+    |
+    | This is the base URI path where Cashier's views, such as the payment
+    | verification screen, will be available from. You're free to tweak
+    | this path according to your preferences and application design.
+    |
+    */
+
+    'path' => env('CASHIER_PATH', 'stripe'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Stripe Webhooks
     |--------------------------------------------------------------------------
     |
     | Your Stripe webhook secret is used to prevent unauthorized requests to
-    | your Stripe webhook handling contorllers. The tolerance setting will
+    | your Stripe webhook handling controllers. The tolerance setting will
     | check the drift between the current time and the signed request's.
     |
     */
@@ -38,9 +51,9 @@ return [
     | Cashier Model
     |--------------------------------------------------------------------------
     |
-    | This is the model in your all that will implements the Billable trait
-    | within the application. It will serve as the primary model you use
-    | when interacting with Cashier related methods and subscriptions.
+    | This is the model in your application that implements the Billable trait
+    | provided by Cashier. It will serve as the primary model you use while
+    | interacting with Cashier related methods, subscriptions, and so on.
     |
     */
 
@@ -71,5 +84,18 @@ return [
     */
 
     'currency_locale' => env('CASHIER_CURRENCY_LOCALE', 'en'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Payment Confirmation Notification
+    |--------------------------------------------------------------------------
+    |
+    | If this setting is enabled, Cashier will automatically notify customers
+    | whose payments require additional verification. You should listen to
+    | Stripe's webhooks in order for this feature to function correctly.
+    |
+    */
+
+    'payment_notification' => env('CASHIER_PAYMENT_NOTIFICATION'),
 
 ];

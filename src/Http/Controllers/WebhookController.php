@@ -4,10 +4,14 @@ namespace Laravel\Cashier\Http\Controllers;
 
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
+use Laravel\Cashier\Cashier;
+use Laravel\Cashier\Payment;
 use Illuminate\Support\Carbon;
 use Laravel\Cashier\Subscription;
 use Illuminate\Routing\Controller;
+use Illuminate\Notifications\Notifiable;
 use Symfony\Component\HttpFoundation\Response;
+use Stripe\PaymentIntent as StripePaymentIntent;
 use Laravel\Cashier\Http\Middleware\VerifyWebhookSignature;
 
 class WebhookController extends Controller
@@ -33,7 +37,7 @@ class WebhookController extends Controller
     public function handleWebhook(Request $request)
     {
         $payload = json_decode($request->getContent(), true);
-        $method = 'handle'.Str::studly(str_replace('.', '_', $payload['type']));
+        $method = 'handle' . Str::studly(str_replace('.', '_', $payload['type']));
 
         if (method_exists($this, $method)) {
             return $this->{$method}($payload);
@@ -45,7 +49,7 @@ class WebhookController extends Controller
     /**
      * Handle customer subscription updated.
      *
-     * @param  array $payload
+     * @param  array  $payload
      * @return \Symfony\Component\HttpFoundation\Response
      */
     protected function handleCustomerSubscriptionUpdated(array $payload)
@@ -56,6 +60,12 @@ class WebhookController extends Controller
             $user->subscriptions->filter(function (Subscription $subscription) use ($data) {
                 return $subscription->stripe_id === $data['id'];
             })->each(function (Subscription $subscription) use ($data) {
+                if (isset($data['status']) && $data['status'] === 'incomplete_expired') {
+                    $subscription->delete();
+
+                    return;
+                }
+
                 // Quantity...
                 if (isset($data['quantity'])) {
                     $subscription->quantity = $data['quantity'];
@@ -70,7 +80,7 @@ class WebhookController extends Controller
                 if (isset($data['trial_end'])) {
                     $trial_ends = Carbon::createFromTimestamp($data['trial_end']);
 
-                    if (! $subscription->trial_ends_at || $subscription->trial_ends_at->ne($trial_ends)) {
+                    if (!$subscription->trial_ends_at || $subscription->trial_ends_at->ne($trial_ends)) {
                         $subscription->trial_ends_at = $trial_ends;
                     }
                 }
@@ -86,11 +96,16 @@ class WebhookController extends Controller
                     }
                 }
 
+                // Status...
+                if (isset($data['status'])) {
+                    $subscription->stripe_status = $data['status'];
+                }
+
                 $subscription->save();
             });
         }
 
-        return new Response('Webhook Handled', 200);
+        return $this->successMethod();
     }
 
     /**
@@ -109,43 +124,28 @@ class WebhookController extends Controller
             });
         }
 
-        return new Response('Webhook Handled', 200);
+        return $this->successMethod();
     }
 
     /**
      * Handle customer updated.
      *
-     * @param  array $payload
+     * @param  array  $payload
      * @return \Symfony\Component\HttpFoundation\Response
      */
     protected function handleCustomerUpdated(array $payload)
     {
         if ($user = $this->getUserByStripeId($payload['data']['object']['id'])) {
-            $user->updateCardFromStripe();
+            $user->updateDefaultPaymentMethodFromStripe();
         }
 
-        return new Response('Webhook Handled', 200);
-    }
-
-    /**
-     * Handle customer source deleted.
-     *
-     * @param  array $payload
-     * @return \Symfony\Component\HttpFoundation\Response
-     */
-    protected function handleCustomerSourceDeleted(array $payload)
-    {
-        if ($user = $this->getUserByStripeId($payload['data']['object']['customer'])) {
-            $user->updateCardFromStripe();
-        }
-
-        return new Response('Webhook Handled', 200);
+        return $this->successMethod();
     }
 
     /**
      * Handle deleted customer.
      *
-     * @param  array $payload
+     * @param  array  $payload
      * @return \Symfony\Component\HttpFoundation\Response
      */
     protected function handleCustomerDeleted(array $payload)
@@ -162,20 +162,61 @@ class WebhookController extends Controller
             ])->save();
         }
 
-        return new Response('Webhook Handled', 200);
+        return $this->successMethod();
+    }
+
+    /**
+     * Handle payment action required for invoice.
+     *
+     * @param  array  $payload
+     * @return \Symfony\Component\HttpFoundation\Response
+     */
+    protected function handleInvoicePaymentActionRequired(array $payload)
+    {
+        if (is_null($notification = config('cashier.payment_notification'))) {
+            return $this->successMethod();
+        }
+
+        if ($user = $this->getUserByStripeId($payload['data']['object']['customer'])) {
+            if (in_array(Notifiable::class, class_uses_recursive($user))) {
+                $payment = new Payment(StripePaymentIntent::retrieve(
+                    $payload['data']['object']['payment_intent'],
+                    Cashier::stripeOptions()
+                ));
+
+                $user->notify(new $notification($payment));
+            }
+        }
+
+        return $this->successMethod();
     }
 
     /**
      * Get the billable entity instance by Stripe ID.
      *
-     * @param  string  $stripeId
-     * @return \Laravel\Cashier\Billable
+     * @param  string|null  $stripeId
+     * @return \Laravel\Cashier\Billable|null
      */
     protected function getUserByStripeId($stripeId)
     {
+        if ($stripeId === null) {
+            return;
+        }
+
         $model = config('cashier.model');
 
         return (new $model)->where('stripe_id', $stripeId)->first();
+    }
+
+    /**
+     * Handle successful calls on the controller.
+     *
+     * @param  array  $parameters
+     * @return \Symfony\Component\HttpFoundation\Response
+     */
+    protected function successMethod($parameters = [])
+    {
+        return new Response('Webhook Handled', 200);
     }
 
     /**
@@ -184,7 +225,7 @@ class WebhookController extends Controller
      * @param  array  $parameters
      * @return \Symfony\Component\HttpFoundation\Response
      */
-    public function missingMethod($parameters = [])
+    protected function missingMethod($parameters = [])
     {
         return new Response;
     }

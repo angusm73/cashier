@@ -8,7 +8,10 @@ use Carbon\Carbon;
 use Stripe\Coupon;
 use Stripe\Product;
 use Illuminate\Support\Str;
-use Laravel\Cashier\Exceptions\SubscriptionCreationFailed;
+use Laravel\Cashier\Payment;
+use Laravel\Cashier\Subscription;
+use Laravel\Cashier\Exceptions\PaymentFailure;
+use Laravel\Cashier\Exceptions\PaymentActionRequired;
 
 class SubscriptionsTest extends IntegrationTestCase
 {
@@ -108,7 +111,7 @@ class SubscriptionsTest extends IntegrationTestCase
         $user = $this->createCustomer('subscriptions_can_be_created');
 
         // Create Subscription
-        $user->newSubscription('main', static::$planId)->create('tok_visa');
+        $user->newSubscription('main', static::$planId)->create('pm_card_visa');
 
         $this->assertEquals(1, count($user->subscriptions));
         $this->assertNotNull($user->subscription('main')->stripe_id);
@@ -165,8 +168,8 @@ class SubscriptionsTest extends IntegrationTestCase
 
         $this->assertEquals(1, $subscription->quantity);
 
-        // Swap Plan
-        $subscription->swap(static::$otherPlanId);
+        // Swap Plan and invoice immediately.
+        $subscription->swapAndInvoice(static::$otherPlanId);
 
         $this->assertEquals(static::$otherPlanId, $subscription->stripe_plan);
 
@@ -183,7 +186,7 @@ class SubscriptionsTest extends IntegrationTestCase
     public function test_swapping_subscription_with_coupon()
     {
         $user = $this->createCustomer('swapping_subscription_with_coupon');
-        $user->newSubscription('main', static::$planId)->create('tok_visa');
+        $user->newSubscription('main', static::$planId)->create('pm_card_visa');
         $subscription = $user->subscription('main');
 
         $subscription->swap(static::$otherPlanId, [
@@ -193,37 +196,134 @@ class SubscriptionsTest extends IntegrationTestCase
         $this->assertEquals(static::$couponId, $subscription->asStripeSubscription()->discount->coupon->id);
     }
 
-    public function test_creating_subscription_fails_when_card_is_declined()
+    public function test_declined_card_during_subscribing_results_in_an_exception()
     {
-        $user = $this->createCustomer('creating_subscription_fails_when_card_is_declined');
+        $user = $this->createCustomer('declined_card_during_subscribing_results_in_an_exception');
 
         try {
-            $user->newSubscription('main', static::$planId)->create('tok_chargeCustomerFail');
+            $user->newSubscription('main', static::$planId)->create('pm_card_chargeCustomerFail');
 
-            $this->fail('Expected exception '.SubscriptionCreationFailed::class.' was not thrown.');
-        } catch (SubscriptionCreationFailed $e) {
-            // Assert no subscription was added to the billable entity.
-            $this->assertEmpty($user->subscriptions);
+            $this->fail('Expected exception '.PaymentFailure::class.' was not thrown.');
+        } catch (PaymentFailure $e) {
+            // Assert that the payment needs a valid payment method.
+            $this->assertTrue($e->payment->requiresPaymentMethod());
 
-            // Assert subscription was cancelled.
-            $this->assertEmpty($user->asStripeCustomer()->subscriptions->data);
+            // Assert subscription was added to the billable entity.
+            $this->assertInstanceOf(Subscription::class, $subscription = $user->subscription('main'));
+
+            // Assert subscription is incomplete.
+            $this->assertTrue($subscription->incomplete());
         }
     }
 
-    public function test_plan_swap_succeeds_even_if_payment_fails()
+    public function test_next_action_needed_during_subscribing_results_in_an_exception()
     {
-        $user = $this->createCustomer('plan_swap_succeeds_even_if_payment_fails');
+        $user = $this->createCustomer('next_action_needed_during_subscribing_results_in_an_exception');
 
-        $subscription = $user->newSubscription('main', static::$planId)->create('tok_visa');
+        try {
+            $user->newSubscription('main', static::$planId)->create('pm_card_threeDSecure2Required');
 
-        // Set a faulty card as the customer's default card.
-        $user->updateCard('tok_chargeCustomerFail');
+            $this->fail('Expected exception '.PaymentActionRequired::class.' was not thrown.');
+        } catch (PaymentActionRequired $e) {
+            // Assert that the payment needs an extra action.
+            $this->assertTrue($e->payment->requiresAction());
+
+            // Assert subscription was added to the billable entity.
+            $this->assertInstanceOf(Subscription::class, $subscription = $user->subscription('main'));
+
+            // Assert subscription is incomplete.
+            $this->assertTrue($subscription->incomplete());
+        }
+    }
+
+    public function test_declined_card_during_plan_swap_results_in_an_exception()
+    {
+        $user = $this->createCustomer('declined_card_during_plan_swap_results_in_an_exception');
+
+        $subscription = $user->newSubscription('main', static::$planId)->create('pm_card_visa');
+
+        // Set a faulty card as the customer's default payment method.
+        $user->updateDefaultPaymentMethod('pm_card_chargeCustomerFail');
+
+        try {
+            // Attempt to swap and pay with a faulty card.
+            $subscription = $subscription->swapAndInvoice(static::$premiumPlanId);
+
+            $this->fail('Expected exception '.PaymentFailure::class.' was not thrown.');
+        } catch (PaymentFailure $e) {
+            // Assert that the payment needs a valid payment method.
+            $this->assertTrue($e->payment->requiresPaymentMethod());
+
+            // Assert that the plan was swapped anyway.
+            $this->assertEquals(static::$premiumPlanId, $subscription->refresh()->stripe_plan);
+
+            // Assert subscription is past due.
+            $this->assertTrue($subscription->pastDue());
+        }
+    }
+
+    public function test_next_action_needed_during_plan_swap_results_in_an_exception()
+    {
+        $user = $this->createCustomer('next_action_needed_during_plan_swap_results_in_an_exception');
+
+        $subscription = $user->newSubscription('main', static::$planId)->create('pm_card_visa');
+
+        // Set a card that requires a next action as the customer's default payment method.
+        $user->updateDefaultPaymentMethod('pm_card_threeDSecure2Required');
+
+        try {
+            // Attempt to swap and pay with a faulty card.
+            $subscription = $subscription->swapAndInvoice(static::$premiumPlanId);
+
+            $this->fail('Expected exception '.PaymentActionRequired::class.' was not thrown.');
+        } catch (PaymentActionRequired $e) {
+            // Assert that the payment needs an extra action.
+            $this->assertTrue($e->payment->requiresAction());
+
+            // Assert that the plan was swapped anyway.
+            $this->assertEquals(static::$premiumPlanId, $subscription->refresh()->stripe_plan);
+
+            // Assert subscription is past due.
+            $this->assertTrue($subscription->pastDue());
+        }
+    }
+
+    public function test_downgrade_with_faulty_card_does_not_incomplete_subscription()
+    {
+        $user = $this->createCustomer('downgrade_with_faulty_card_does_not_incomplete_subscription');
+
+        $subscription = $user->newSubscription('main', static::$premiumPlanId)->create('pm_card_visa');
+
+        // Set a card that requires a next action as the customer's default payment method.
+        $user->updateDefaultPaymentMethod('pm_card_chargeCustomerFail');
 
         // Attempt to swap and pay with a faulty card.
-        $subscription = $subscription->swap(static::$premiumPlanId);
+        $subscription = $subscription->swap(static::$planId);
 
-        // Assert that the plan was swapped.
-        $this->assertEquals(static::$premiumPlanId, $subscription->stripe_plan);
+        // Assert that the plan was swapped anyway.
+        $this->assertEquals(static::$planId, $subscription->refresh()->stripe_plan);
+
+        // Assert subscription is still active.
+        $this->assertTrue($subscription->active());
+    }
+
+    public function test_downgrade_with_3d_secure_does_not_incomplete_subscription()
+    {
+        $user = $this->createCustomer('downgrade_with_3d_secure_does_not_incomplete_subscription');
+
+        $subscription = $user->newSubscription('main', static::$premiumPlanId)->create('pm_card_visa');
+
+        // Set a card that requires a next action as the customer's default payment method.
+        $user->updateDefaultPaymentMethod('pm_card_threeDSecure2Required');
+
+        // Attempt to swap and pay with a faulty card.
+        $subscription = $subscription->swap(static::$planId);
+
+        // Assert that the plan was swapped anyway.
+        $this->assertEquals(static::$planId, $subscription->refresh()->stripe_plan);
+
+        // Assert subscription is still active.
+        $this->assertTrue($subscription->active());
     }
 
     public function test_creating_subscription_with_coupons()
@@ -233,7 +333,7 @@ class SubscriptionsTest extends IntegrationTestCase
         // Create Subscription
         $user->newSubscription('main', static::$planId)
             ->withCoupon(static::$couponId)
-            ->create('tok_visa');
+            ->create('pm_card_visa');
 
         $subscription = $user->subscription('main');
 
@@ -262,7 +362,7 @@ class SubscriptionsTest extends IntegrationTestCase
         // Create Subscription
         $user->newSubscription('main', static::$planId)
             ->anchorBillingCycleOn(new DateTime('first day of next month'))
-            ->create('tok_visa');
+            ->create('pm_card_visa');
 
         $subscription = $user->subscription('main');
 
@@ -296,7 +396,7 @@ class SubscriptionsTest extends IntegrationTestCase
         // Create Subscription
         $user->newSubscription('main', static::$planId)
             ->trialDays(7)
-            ->create('tok_visa');
+            ->create('pm_card_visa');
 
         $subscription = $user->subscription('main');
 
@@ -332,7 +432,7 @@ class SubscriptionsTest extends IntegrationTestCase
         // Create Subscription
         $user->newSubscription('main', static::$planId)
             ->trialUntil(Carbon::tomorrow()->hour(3)->minute(15))
-            ->create('tok_visa');
+            ->create('pm_card_visa');
 
         $subscription = $user->subscription('main');
 
@@ -365,7 +465,7 @@ class SubscriptionsTest extends IntegrationTestCase
     {
         $user = $this->createCustomer('applying_coupons_to_existing_customers');
 
-        $user->newSubscription('main', static::$planId)->create('tok_visa');
+        $user->newSubscription('main', static::$planId)->create('pm_card_visa');
 
         $user->applyCoupon(static::$couponId);
 
@@ -378,16 +478,33 @@ class SubscriptionsTest extends IntegrationTestCase
     {
         $user = $this->createCustomer('subscription_state_scopes');
 
+        // Start with an incomplete subscription.
         $subscription = $user->subscriptions()->create([
             'name' => 'yearly',
             'stripe_id' => 'xxxx',
+            'stripe_status' => 'incomplete',
             'stripe_plan' => 'stripe-yearly',
             'quantity' => 1,
             'trial_ends_at' => null,
             'ends_at' => null,
         ]);
 
-        // subscription is active
+        // Subscription is incomplete
+        $this->assertTrue($user->subscriptions()->incomplete()->exists());
+        $this->assertFalse($user->subscriptions()->active()->exists());
+        $this->assertFalse($user->subscriptions()->onTrial()->exists());
+        $this->assertTrue($user->subscriptions()->notOnTrial()->exists());
+        $this->assertTrue($user->subscriptions()->recurring()->exists());
+        $this->assertFalse($user->subscriptions()->cancelled()->exists());
+        $this->assertTrue($user->subscriptions()->notCancelled()->exists());
+        $this->assertFalse($user->subscriptions()->onGracePeriod()->exists());
+        $this->assertTrue($user->subscriptions()->notOnGracePeriod()->exists());
+        $this->assertFalse($user->subscriptions()->ended()->exists());
+
+        // Activate.
+        $subscription->update(['stripe_status' => 'active']);
+
+        $this->assertFalse($user->subscriptions()->incomplete()->exists());
         $this->assertTrue($user->subscriptions()->active()->exists());
         $this->assertFalse($user->subscriptions()->onTrial()->exists());
         $this->assertTrue($user->subscriptions()->notOnTrial()->exists());
@@ -398,9 +515,10 @@ class SubscriptionsTest extends IntegrationTestCase
         $this->assertTrue($user->subscriptions()->notOnGracePeriod()->exists());
         $this->assertFalse($user->subscriptions()->ended()->exists());
 
-        // put on trial
+        // Put on trial.
         $subscription->update(['trial_ends_at' => Carbon::now()->addDay()]);
 
+        $this->assertFalse($user->subscriptions()->incomplete()->exists());
         $this->assertTrue($user->subscriptions()->active()->exists());
         $this->assertTrue($user->subscriptions()->onTrial()->exists());
         $this->assertFalse($user->subscriptions()->notOnTrial()->exists());
@@ -411,9 +529,10 @@ class SubscriptionsTest extends IntegrationTestCase
         $this->assertTrue($user->subscriptions()->notOnGracePeriod()->exists());
         $this->assertFalse($user->subscriptions()->ended()->exists());
 
-        // put on grace period
+        // Put on grace period.
         $subscription->update(['ends_at' => Carbon::now()->addDay()]);
 
+        $this->assertFalse($user->subscriptions()->incomplete()->exists());
         $this->assertTrue($user->subscriptions()->active()->exists());
         $this->assertTrue($user->subscriptions()->onTrial()->exists());
         $this->assertFalse($user->subscriptions()->notOnTrial()->exists());
@@ -424,9 +543,10 @@ class SubscriptionsTest extends IntegrationTestCase
         $this->assertFalse($user->subscriptions()->notOnGracePeriod()->exists());
         $this->assertFalse($user->subscriptions()->ended()->exists());
 
-        // end subscription
+        // End subscription.
         $subscription->update(['ends_at' => Carbon::now()->subDay()]);
 
+        $this->assertFalse($user->subscriptions()->incomplete()->exists());
         $this->assertFalse($user->subscriptions()->active()->exists());
         $this->assertTrue($user->subscriptions()->onTrial()->exists());
         $this->assertFalse($user->subscriptions()->notOnTrial()->exists());
@@ -436,5 +556,21 @@ class SubscriptionsTest extends IntegrationTestCase
         $this->assertFalse($user->subscriptions()->onGracePeriod()->exists());
         $this->assertTrue($user->subscriptions()->notOnGracePeriod()->exists());
         $this->assertTrue($user->subscriptions()->ended()->exists());
+    }
+
+    public function test_retrieve_the_latest_payment_for_a_subscription()
+    {
+        $user = $this->createCustomer('retrieve_the_latest_payment_for_a_subscription');
+
+        try {
+            $user->newSubscription('main', static::$planId)->create('pm_card_threeDSecure2Required');
+
+            $this->fail('Expected exception '.PaymentActionRequired::class.' was not thrown.');
+        } catch (PaymentActionRequired $e) {
+            $subscription = $user->refresh()->subscription('main');
+
+            $this->assertInstanceOf(Payment::class, $payment = $subscription->latestPayment());
+            $this->assertTrue($payment->requiresAction());
+        }
     }
 }
