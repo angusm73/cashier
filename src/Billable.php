@@ -772,16 +772,6 @@ trait Billable
     }
 
     /**
-     * Determines if the customer currently has a card on file.
-     *
-     * @return bool
-     */
-    public function hasCardOnFile()
-    {
-        return (bool) $this->card_brand;
-    }
-
-    /**
      * Get the Stripe customer for the model.
      *
      * @return \Stripe\Customer
