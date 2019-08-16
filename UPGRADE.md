@@ -35,6 +35,7 @@ PR: https://github.com/laravel/cashier/pull/663
 
 Just like in other Laravel packages, Cashier's migrations now ship with the package. These migrations are automatically registered and will be executed when you run `php artisan migrate`. If you have already run these migrations and want to disable additional migration being executed by Cashier, call `Cashier::ignoreMigrations();` from the `register` method in your `AppServiceProvider`.
 
+<a name="configuration-file"></a>
 ### Configuration File
 
 PR: https://github.com/laravel/cashier/pull/690
@@ -104,6 +105,8 @@ You can determine if a user needs to confirm a payment using the new `hasIncompl
 > When a subscription is in an incomplete state, no plan changes can occur and an `SubscriptionUpdateFailure` exception will occur when you try to call the `swap` or `updateQuantity` methods.
 
 #### Payment Notifications
+
+> If you have enabled Stripe's built-in payment confirmation notifications then you do not need to configure the Cashier payment confirmation notifications.
 
 Since SCA regulations require customers to occasionally verify their payment details even while their subscription is active, Cashier can send a payment notification to the customer when off-session payment confirmation is required. For example, this may occur when a subscription is renewing. Cashier's payment notification can be enabled by setting the `CASHIER_PAYMENT_NOTIFICATION` environment variable to a notification class. By default, this notification is disabled. Of course, Cashier includes a notification class you may use for this purpose, but you are free to provide your own notification class if desired:
 
@@ -175,8 +178,11 @@ The Cashier webhook handler route is now automatically registered for you and do
 
 PR: https://github.com/laravel/cashier/pull/685
 PR: https://github.com/laravel/cashier/pull/711
+PR: https://github.com/laravel/cashier/pull/690
 
-Cashier now makes use of the `moneyphp/money` library to format current values for display on invoices. Because of this, the `useCurrencySymbol`, `usesCurrencySymbol`, `guessCurrencySymbol` methods, and the `$symbol` parameter on the `useCurrency` have been removed.
+Cashier now uses the `moneyphp/money` library to format currency values for display on invoices. Because of this, the `useCurrencySymbol`, `usesCurrencySymbol` and `guessCurrencySymbol` methods have been removed.
+
+The `useCurrency` method has been replaced by a configuration option in the new [Cashier configuration file](#configuration-file) and the `usesCurrency` method has been removed.
 
 In addition, all `raw` methods on the `Invoice` object now return integers instead of floats. These integers represent money values in cents.
 
